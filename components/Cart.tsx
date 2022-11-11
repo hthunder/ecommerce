@@ -8,11 +8,12 @@ import {
 } from "react-icons/ai";
 import { TiDeleteOutline } from "react-icons/ti";
 import toast from "react-hot-toast";
+import { useRouter } from "next/router";
 
 import { useStateContext } from "../context/StateContext";
 import { urlFor } from "../lib/client";
 import Image from "next/image";
-import getStripe from "../lib/getStripe";
+import { PaymentService } from "../services/PaymentService";
 
 export const Cart = () => {
   const cartRef = useRef<HTMLDivElement>(null);
@@ -24,23 +25,12 @@ export const Cart = () => {
     totalPrice,
     totalQuantities,
   } = useStateContext()!;
+  const router = useRouter();
 
   const handleCheckout = async () => {
-    const stripe = await getStripe();
-
-    const response = await fetch("/api/stripe", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ cartItems }),
-    });
-
-    if (response.status === 500) return;
-    const data = await response.json();
-
-    toast.loading("Redirecting...");
-    stripe?.redirectToCheckout({ sessionId: data.id });
+    const paymentService = new PaymentService("/api/ukassa");
+    const url = await paymentService.create(cartItems);
+    router.push(url);
   };
 
   return (
@@ -133,7 +123,7 @@ export const Cart = () => {
               </div>
               <div className="btn-container">
                 <button className="btn" type="button" onClick={handleCheckout}>
-                  Pay with Stripe
+                  Pay
                 </button>
               </div>
             </>

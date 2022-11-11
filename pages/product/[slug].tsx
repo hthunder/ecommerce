@@ -2,6 +2,7 @@ import { GetStaticProps, NextPage } from "next";
 import Image from "next/image";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/router";
 import {
   AiOutlineMinus,
   AiOutlinePlus,
@@ -12,8 +13,8 @@ import { Product } from "../../components";
 import { useStateContext } from "../../context/StateContext";
 
 import { client, urlFor } from "../../lib/client";
-import getStripe from "../../lib/getStripe";
-import { ICartProduct, IProduct } from "../../types/";
+import { IProduct } from "../../types/";
+import { PaymentService } from "../../services/PaymentService";
 
 interface IProductDetailsProps {
   products: IProduct[];
@@ -24,6 +25,7 @@ const ProductDetails: NextPage<IProductDetailsProps> = (props) => {
   const { products, product } = props;
   const { image, name, details, price } = product;
   const [index, setIndex] = useState(0);
+  const router = useRouter();
 
   const [qty, setQty] = useState(1);
   const decQty = () =>
@@ -34,21 +36,9 @@ const ProductDetails: NextPage<IProductDetailsProps> = (props) => {
   const { onAdd } = useStateContext()!;
 
   const handleCheckout = async () => {
-    const cartProduct: ICartProduct = { ...product, quantity: qty };
-    const response = await fetch("/api/stripe", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ cartItems: [cartProduct] }),
-    });
-
-    if (response.status === 500) return;
-    const data = await response.json();
-
-    toast.loading("Redirecting...");
-    const stripe = await getStripe();
-    stripe?.redirectToCheckout({ sessionId: data.id });
+    const paymentService = new PaymentService("/api/ukassa");
+    const url = await paymentService.create([{ ...product, quantity: qty }]);
+    router.push(url);
   };
 
   return (
@@ -103,9 +93,7 @@ const ProductDetails: NextPage<IProductDetailsProps> = (props) => {
               <span className="minus" onClick={decQty}>
                 <AiOutlineMinus />
               </span>
-              <span className="num">
-                {qty}
-              </span>
+              <span className="num">{qty}</span>
               <span className="plus" onClick={incQty}>
                 <AiOutlinePlus />
               </span>
